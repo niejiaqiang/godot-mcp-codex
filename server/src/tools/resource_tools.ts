@@ -16,6 +16,15 @@ interface GetResourceDependenciesParams {
   resource_path: string;
 }
 
+interface CreateThemeResourceParams {
+  resource_path: string;
+}
+
+interface AssignThemeToControlParams {
+  theme_path: string;
+  node_path: string;
+}
+
 export const resourceTools: MCPTool[] = [
   {
     name: 'list_resources',
@@ -99,6 +108,56 @@ export const resourceTools: MCPTool[] = [
         return lines.join('\n');
       } catch (error) {
         throw new Error(`Failed to get resource info: ${(error as Error).message}`);
+      }
+    },
+  },
+
+  {
+    name: 'create_theme_resource',
+    description: 'Create a Theme resource for Godot UI work',
+    parameters: z.object({
+      resource_path: z.string()
+        .describe('Where to save the Theme resource, e.g. "res://themes/main_ui.tres"'),
+    }),
+    execute: async ({ resource_path }: CreateThemeResourceParams): Promise<string> => {
+      const godot = getGodotConnection();
+
+      try {
+        const result = await godot.sendCommand<CommandResult>('create_resource', {
+          resource_type: 'Theme',
+          resource_path,
+          properties: {},
+        });
+
+        return `Created Theme resource at ${result.resource_path ?? resource_path}`;
+      } catch (error) {
+        throw new Error(`Failed to create Theme resource: ${(error as Error).message}`);
+      }
+    },
+  },
+
+  {
+    name: 'assign_theme_to_control',
+    description: 'Assign a Theme resource to a Control node',
+    parameters: z.object({
+      theme_path: z.string()
+        .describe('Theme resource path, e.g. "res://themes/main_ui.tres"'),
+      node_path: z.string()
+        .describe('Control node path that should receive the theme'),
+    }),
+    execute: async ({ theme_path, node_path }: AssignThemeToControlParams): Promise<string> => {
+      const godot = getGodotConnection();
+
+      try {
+        await godot.sendCommand<CommandResult>('update_node_property', {
+          node_path,
+          property: 'theme',
+          value: theme_path,
+        });
+
+        return `Assigned theme ${theme_path} to ${node_path}`;
+      } catch (error) {
+        throw new Error(`Failed to assign theme to control: ${(error as Error).message}`);
       }
     },
   },
