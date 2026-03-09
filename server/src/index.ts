@@ -3,17 +3,23 @@ import { nodeTools } from './tools/node_tools.js';
 import { scriptTools } from './tools/script_tools.js';
 import { sceneTools } from './tools/scene_tools.js';
 import { editorTools } from './tools/editor_tools.js';
+import { filesystemTools } from './tools/filesystem_tools.js';
+import { maintenanceTools } from './tools/maintenance_tools.js';
+import { resourceTools } from './tools/resource_tools.js';
+import { signalTools } from './tools/signal_tools.js';
 import { getGodotConnection } from './utils/godot_connection.js';
 
 // Import resources
 import { 
   sceneListResource, 
-  sceneStructureResource 
+  sceneStructureResource,
+  sceneByPathResourceTemplate
 } from './resources/scene_resources.js';
 import { 
   scriptResource, 
   scriptListResource,
-  scriptMetadataResource 
+  scriptMetadataResource,
+  scriptByPathResourceTemplate
 } from './resources/script_resources.js';
 import { 
   projectStructureResource,
@@ -25,6 +31,7 @@ import {
   selectedNodeResource,
   currentScriptResource 
 } from './resources/editor_resources.js';
+import { nodeSubtreeResourceTemplate } from './resources/node_resources.js';
 
 /**
  * Main entry point for the Godot MCP server
@@ -39,7 +46,7 @@ async function main() {
   });
 
   // Register all tools
-  [...nodeTools, ...scriptTools, ...sceneTools, ...editorTools].forEach(tool => {
+  [...nodeTools, ...scriptTools, ...sceneTools, ...editorTools, ...filesystemTools, ...resourceTools, ...signalTools, ...maintenanceTools].forEach(tool => {
     server.addTool(tool);
   });
 
@@ -56,30 +63,47 @@ async function main() {
   server.addResource(sceneStructureResource);
   server.addResource(scriptResource);
   server.addResource(scriptMetadataResource);
+  server.addResourceTemplate(sceneByPathResourceTemplate as any);
+  server.addResourceTemplate(scriptByPathResourceTemplate as any);
+  server.addResourceTemplate(nodeSubtreeResourceTemplate as any);
 
-  // Try to connect to Godot
-  try {
-    const godot = getGodotConnection();
-    await godot.connect();
-    console.error('Successfully connected to Godot WebSocket server');
-  } catch (error) {
-    const err = error as Error;
-    console.warn(`Could not connect to Godot: ${err.message}`);
-    console.warn('Will retry connection when commands are executed');
+  const transport = (process.env.MCP_TRANSPORT || 'stdio').toLowerCase();
+  const ssePort = Number(process.env.MCP_SSE_PORT || '8765');
+  const sseEndpoint = (process.env.MCP_SSE_ENDPOINT || '/sse') as `/${string}`;
+
+  if (transport === 'sse') {
+    await server.start({
+      transportType: 'sse',
+      sse: {
+        port: ssePort,
+        endpoint: sseEndpoint,
+      },
+    });
+    console.error(`Godot MCP server started in SSE mode at http://127.0.0.1:${ssePort}${sseEndpoint}`);
+  } else {
+    await server.start({
+      transportType: 'stdio',
+    });
+    console.error('Godot MCP server started in stdio mode');
   }
 
-  // Start the server
-  server.start({
-    transportType: 'stdio',
-  });
-
-  console.error('Godot MCP server started');
+  // Warm up the Godot websocket in the background without blocking MCP startup.
+  const godot = getGodotConnection();
+  godot.connect()
+    .then(() => {
+      console.error('Successfully connected to Godot WebSocket server');
+    })
+    .catch((error) => {
+      const err = error as Error;
+      console.warn(`Could not connect to Godot: ${err.message}`);
+      console.warn('Will retry connection when commands are executed');
+    });
 
   // Handle cleanup
-  const cleanup = () => {
+  const cleanup = async () => {
     console.error('Shutting down Godot MCP server...');
-    const godot = getGodotConnection();
     godot.disconnect();
+    await server.stop();
     process.exit(0);
   };
 

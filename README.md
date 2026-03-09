@@ -1,25 +1,25 @@
-# Godot MCP (Model Context Protocol)
+# Godot MCP Codex
 
-A comprehensive integration between Godot Engine and AI assistants using the Model Context Protocol (MCP). This plugin allows AI assistants to interact with your Godot projects, providing powerful capabilities for code assistance, scene manipulation, and project management.
+A Godot MCP toolkit focused on practical editor automation for Codex, Claude, and other MCP clients. It combines a Godot editor plugin with a FastMCP server so AI agents can inspect scenes, edit nodes and scripts, diagnose UI layout issues, work with signals, search project files, and inspect resources.
 
 ## Features
 
-- **Full Godot Project Access**: AI assistants can access and modify scripts, scenes, nodes, and project resources
-- **Two-way Communication**: Send project data to AI and apply suggested changes directly in the editor
-- **Command Categories**:
-  - **Node Commands**: Create, modify, and manage nodes in your scenes
-  - **Script Commands**: Edit, analyze, and create GDScript files
-  - **Scene Commands**: Manipulate scenes and their structure
-  - **Project Commands**: Access project settings and resources
-  - **Editor Commands**: Control various editor functionality
+- **Stable `stdio` workflow** for Codex and other desktop MCP clients
+- **Scene and node automation** for creating, querying, and editing Godot content
+- **Script editing support** with read, write, and template generation
+- **UI layout diagnostics** including subtree snapshots, issue detection, auto-fix, and alignment helpers
+- **Signal tooling** to inspect, connect, disconnect, and audit node signal wiring
+- **Project file access** for directory listing, text reads, and search under `res://`
+- **Resource inspection** for resource listing, metadata inspection, and dependency lookups
+- **Optional SSE / HTTP transports** for environments that support them
 
 ## Quick Setup
 
 ### 1. Clone the Repository
 
 ```bash
-git clone https://github.com/ee0pdt/godot-mcp.git
-cd godot-mcp
+git clone https://github.com/niejiaqiang/godot-mcp-codex.git
+cd godot-mcp-codex
 ```
 
 ### 2. Set Up the MCP Server
@@ -32,19 +32,13 @@ npm run build
 cd ..
 ```
 
-### 3. Set Up Claude Desktop
+### 3. Configure Your MCP Client
 
-1. Edit or create the Claude Desktop config file:
-   ```bash
-   # For macOS
-   nano ~/Library/Application\ Support/Claude/claude_desktop_config.json
-   ```
-
-2. Add the following configuration (or use the included `claude_desktop_config.json` as a reference):
+Add the following configuration to your MCP client (Codex, Claude Desktop, Claude Code, or another compatible client):
    ```json
    {
 	 "mcpServers": {
-	   "godot-mcp": {
+	   "godot-mcp-codex": {
 		 "command": "node",
 		 "args": [
 		   "PATH_TO_YOUR_PROJECT/server/dist/index.js"
@@ -58,7 +52,7 @@ cd ..
    ```
    > **Note**: Replace `PATH_TO_YOUR_PROJECT` with the absolute path to where you have this repository stored.
 
-3. Restart Claude Desktop
+Restart your MCP client after saving the config.
 
 ### 4. Open the Example Project in Godot
 
@@ -67,26 +61,26 @@ cd ..
 3. Open the `project.godot` file
 4. The MCP plugin is already enabled in this example project
 
-## Using MCP with Claude
+## Using MCP with AI Clients
 
-After setup, you can work with your Godot project directly from Claude using natural language. Here are some examples:
+After setup, you can work with your Godot project directly from Codex, Claude, or another MCP client using natural language.
 
 ### Example Prompts
 
 ```
-@mcp godot-mcp read godot://script/current
+@mcp godot-mcp-codex read godot://script/current
 
 I need help optimizing my player movement code. Can you suggest improvements?
 ```
 
 ```
-@mcp godot-mcp run get-scene-tree
+@mcp godot-mcp-codex run get_current_scene
 
 Add a cube in the middle of the scene and then make a camera that is looking at the cube.
 ```
 
 ```
-@mcp godot-mcp read godot://scene/current
+@mcp godot-mcp-codex read godot://scene/current
 
 Create an enemy AI that patrols between waypoints and attacks the player when in range.
 ```
@@ -101,41 +95,24 @@ Create an enemy AI that patrols between waypoints and attacks the player when in
 
 ## Available Resources and Commands
 
-### Resource Endpoints:
+### Resource Endpoints
 - `godot://script/current` - The currently open script
 - `godot://scene/current` - The currently open scene
 - `godot://project/info` - Project metadata and settings
+- `godot://scene/by-path/{path}` - A scene by explicit `res://` path
+- `godot://script/by-path/{path}` - A script by explicit `res://` path
+- `godot://node/subtree/{path}` - A serialized node subtree
 
 ### Command Categories:
 
-#### Node Commands
-- `get-scene-tree` - Returns the scene tree structure
-- `get-node-properties` - Gets properties of a specific node
-- `create-node` - Creates a new node
-- `delete-node` - Deletes a node
-- `modify-node` - Updates node properties
-
-#### Script Commands
-- `list-project-scripts` - Lists all scripts in the project
-- `read-script` - Reads a specific script
-- `modify-script` - Updates script content
-- `create-script` - Creates a new script
-- `analyze-script` - Provides analysis of a script
-
-#### Scene Commands
-- `list-project-scenes` - Lists all scenes in the project
-- `read-scene` - Reads scene structure
-- `create-scene` - Creates a new scene
-- `save-scene` - Saves current scene
-
-#### Project Commands
-- `get-project-settings` - Gets project settings
-- `list-project-resources` - Lists project resources
-
-#### Editor Commands
-- `get-editor-state` - Gets current editor state
-- `run-project` - Runs the project
-- `stop-project` - Stops the running project
+#### High-value Tools
+- `find_nodes`, `get_node_subtree`, `batch_update_node_properties`
+- `inspect_control_layouts`, `diagnose_layout_issues`, `auto_fix_layout_issues`, `align_controls`
+- `list_node_signals`, `get_node_signal_info`, `list_node_signal_connections`
+- `connect_node_signal`, `disconnect_node_signal`, `disconnect_all_node_signal_connections`
+- `list_directory`, `read_text_file`, `search_project_files`
+- `list_resources`, `get_resource_info`, `get_resource_dependencies`
+- `get_plugin_sync_status`
 
 ## Troubleshooting
 
@@ -159,9 +136,14 @@ If you want to use the MCP plugin in your own Godot project:
 3. Go to Project > Project Settings > Plugins
 4. Enable the "Godot MCP" plugin
 
-## Contributing
+## Notes About Layout
 
-Contributions are welcome! Please feel free to submit a Pull Request.
+This repo intentionally contains:
+- the source MCP repo under the root
+- the Godot plugin under `addons/godot_mcp`
+- the Node/FastMCP server under `server`
+
+In consuming Godot projects, you should copy or sync only `addons/godot_mcp` into the target project's `addons` directory.
 
 ## Documentation
 

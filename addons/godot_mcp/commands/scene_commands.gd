@@ -13,6 +13,9 @@ func process_command(client_id: int, command_type: String, params: Dictionary, c
 		"get_current_scene":
 			_get_current_scene(client_id, params, command_id)
 			return true
+		"get_current_scene_structure":
+			_get_current_scene_structure(client_id, params, command_id)
+			return true
 		"get_scene_structure":
 			_get_scene_structure(client_id, params, command_id)
 			return true
@@ -128,11 +131,11 @@ func _get_current_scene(client_id: int, _params: Dictionary, command_id: String)
 
 func _get_scene_structure(client_id: int, params: Dictionary, command_id: String) -> void:
 	var path = params.get("path", "")
+
+	if path.is_empty():
+		return _get_current_scene_structure(client_id, params, command_id)
 	
 	# Validation
-	if path.is_empty():
-		return _send_error(client_id, "Scene path cannot be empty", command_id)
-	
 	if not path.begins_with("res://"):
 		path = "res://" + path
 	
@@ -159,6 +162,25 @@ func _get_scene_structure(client_id: int, params: Dictionary, command_id: String
 	_send_success(client_id, {
 		"path": path,
 		"structure": structure
+	}, command_id)
+
+func _get_current_scene_structure(client_id: int, _params: Dictionary, command_id: String) -> void:
+	var plugin = Engine.get_meta("GodotMCPPlugin")
+	if not plugin:
+		return _send_error(client_id, "GodotMCPPlugin not found in Engine metadata", command_id)
+
+	var editor_interface = plugin.get_editor_interface()
+	var edited_scene_root = editor_interface.get_edited_scene_root()
+	if not edited_scene_root:
+		return _send_error(client_id, "No scene is currently being edited", command_id)
+
+	var scene_path = edited_scene_root.scene_file_path
+	if scene_path.is_empty():
+		scene_path = "Untitled"
+
+	_send_success(client_id, {
+		"path": scene_path,
+		"structure": _get_node_structure(edited_scene_root)
 	}, command_id)
 
 func _get_node_structure(node: Node) -> Dictionary:

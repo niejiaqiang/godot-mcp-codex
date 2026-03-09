@@ -22,6 +22,8 @@ func _initialize_command_processors():
 	var script_commands = MCPScriptCommands.new()
 	var scene_commands = MCPSceneCommands.new() 
 	var project_commands = MCPProjectCommands.new()
+	var filesystem_commands = MCPFilesystemCommands.new()
+	var resource_commands = MCPResourceCommands.new()
 	var editor_commands = MCPEditorCommands.new()
 	var editor_script_commands = MCPEditorScriptCommands.new()  # Add our new processor
 	
@@ -30,6 +32,8 @@ func _initialize_command_processors():
 	script_commands._websocket_server = _websocket_server
 	scene_commands._websocket_server = _websocket_server
 	project_commands._websocket_server = _websocket_server
+	filesystem_commands._websocket_server = _websocket_server
+	resource_commands._websocket_server = _websocket_server
 	editor_commands._websocket_server = _websocket_server
 	editor_script_commands._websocket_server = _websocket_server  # Set server reference
 	
@@ -38,6 +42,8 @@ func _initialize_command_processors():
 	_command_processors.append(script_commands)
 	_command_processors.append(scene_commands)
 	_command_processors.append(project_commands)
+	_command_processors.append(filesystem_commands)
+	_command_processors.append(resource_commands)
 	_command_processors.append(editor_commands)
 	_command_processors.append(editor_script_commands)  # Add to processor list
 	
@@ -46,6 +52,8 @@ func _initialize_command_processors():
 	add_child(script_commands)
 	add_child(scene_commands)
 	add_child(project_commands)
+	add_child(filesystem_commands)
+	add_child(resource_commands)
 	add_child(editor_commands)
 	add_child(editor_script_commands)  # Add as child
 

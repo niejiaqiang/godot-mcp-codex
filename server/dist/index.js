@@ -47,18 +47,25 @@ import { FastMCP } from 'fastmcp';
 import { nodeTools } from './tools/node_tools.js';
 import { scriptTools } from './tools/script_tools.js';
 import { sceneTools } from './tools/scene_tools.js';
+import { editorTools } from './tools/editor_tools.js';
+import { filesystemTools } from './tools/filesystem_tools.js';
+import { maintenanceTools } from './tools/maintenance_tools.js';
+import { resourceTools } from './tools/resource_tools.js';
+import { signalTools } from './tools/signal_tools.js';
 import { getGodotConnection } from './utils/godot_connection.js';
 // Import resources
-import { sceneListResource, sceneStructureResource } from './resources/scene_resources.js';
-import { scriptResource, scriptListResource, scriptMetadataResource } from './resources/script_resources.js';
+import { sceneListResource, sceneStructureResource, sceneByPathResourceTemplate } from './resources/scene_resources.js';
+import { scriptResource, scriptListResource, scriptMetadataResource, scriptByPathResourceTemplate } from './resources/script_resources.js';
 import { projectStructureResource, projectSettingsResource, projectResourcesResource } from './resources/project_resources.js';
 import { editorStateResource, selectedNodeResource, currentScriptResource } from './resources/editor_resources.js';
+import { nodeSubtreeResourceTemplate } from './resources/node_resources.js';
 /**
  * Main entry point for the Godot MCP server
  */
 function main() {
     return __awaiter(this, void 0, void 0, function () {
-        var server, godot, error_1, err, cleanup;
+        var server, transport, ssePort, sseEndpoint, godot, cleanup;
+        var _this = this;
         return __generator(this, function (_a) {
             switch (_a.label) {
                 case 0:
@@ -68,7 +75,7 @@ function main() {
                         version: '1.0.0',
                     });
                     // Register all tools
-                    __spreadArray(__spreadArray(__spreadArray([], nodeTools, true), scriptTools, true), sceneTools, true).forEach(function (tool) {
+                    __spreadArray(__spreadArray(__spreadArray(__spreadArray(__spreadArray(__spreadArray(__spreadArray(__spreadArray([], nodeTools, true), scriptTools, true), sceneTools, true), editorTools, true), filesystemTools, true), resourceTools, true), signalTools, true), maintenanceTools, true).forEach(function (tool) {
                         server.addTool(tool);
                     });
                     // Register all resources
@@ -84,33 +91,56 @@ function main() {
                     server.addResource(sceneStructureResource);
                     server.addResource(scriptResource);
                     server.addResource(scriptMetadataResource);
-                    _a.label = 1;
+                    server.addResourceTemplate(sceneByPathResourceTemplate);
+                    server.addResourceTemplate(scriptByPathResourceTemplate);
+                    server.addResourceTemplate(nodeSubtreeResourceTemplate);
+                    transport = (process.env.MCP_TRANSPORT || 'stdio').toLowerCase();
+                    ssePort = Number(process.env.MCP_SSE_PORT || '8765');
+                    sseEndpoint = (process.env.MCP_SSE_ENDPOINT || '/sse');
+                    if (!(transport === 'sse')) return [3 /*break*/, 2];
+                    return [4 /*yield*/, server.start({
+                            transportType: 'sse',
+                            sse: {
+                                port: ssePort,
+                                endpoint: sseEndpoint,
+                            },
+                        })];
                 case 1:
-                    _a.trys.push([1, 3, , 4]);
-                    godot = getGodotConnection();
-                    return [4 /*yield*/, godot.connect()];
-                case 2:
                     _a.sent();
-                    console.error('Successfully connected to Godot WebSocket server');
+                    console.error("Godot MCP server started in SSE mode at http://127.0.0.1:".concat(ssePort).concat(sseEndpoint));
                     return [3 /*break*/, 4];
-                case 3:
-                    error_1 = _a.sent();
-                    err = error_1;
-                    console.warn("Could not connect to Godot: ".concat(err.message));
-                    console.warn('Will retry connection when commands are executed');
-                    return [3 /*break*/, 4];
-                case 4:
-                    // Start the server
-                    server.start({
+                case 2: return [4 /*yield*/, server.start({
                         transportType: 'stdio',
+                    })];
+                case 3:
+                    _a.sent();
+                    console.error('Godot MCP server started in stdio mode');
+                    _a.label = 4;
+                case 4:
+                    godot = getGodotConnection();
+                    godot.connect()
+                        .then(function () {
+                        console.error('Successfully connected to Godot WebSocket server');
+                    })
+                        .catch(function (error) {
+                        var err = error;
+                        console.warn("Could not connect to Godot: ".concat(err.message));
+                        console.warn('Will retry connection when commands are executed');
                     });
-                    console.error('Godot MCP server started');
-                    cleanup = function () {
-                        console.error('Shutting down Godot MCP server...');
-                        var godot = getGodotConnection();
-                        godot.disconnect();
-                        process.exit(0);
-                    };
+                    cleanup = function () { return __awaiter(_this, void 0, void 0, function () {
+                        return __generator(this, function (_a) {
+                            switch (_a.label) {
+                                case 0:
+                                    console.error('Shutting down Godot MCP server...');
+                                    godot.disconnect();
+                                    return [4 /*yield*/, server.stop()];
+                                case 1:
+                                    _a.sent();
+                                    process.exit(0);
+                                    return [2 /*return*/];
+                            }
+                        });
+                    }); };
                     process.on('SIGINT', cleanup);
                     process.on('SIGTERM', cleanup);
                     return [2 /*return*/];

@@ -1,6 +1,13 @@
-import { Resource, ResourceTemplate } from 'fastmcp';
+import { Resource } from 'fastmcp';
 import { getGodotConnection } from '../utils/godot_connection.js';
-import { z } from 'zod';
+
+function decodeTemplatePath(path: string): string {
+  try {
+    return decodeURIComponent(path);
+  } catch {
+    return path;
+  }
+}
 
 /**
  * Resource that provides a list of all scenes in the project
@@ -51,8 +58,25 @@ export const sceneStructureResource: Resource = {
         const godot = getGodotConnection();
         
         try {
-            // Call a command on the Godot side to get current scene structure
-            const result = await godot.sendCommand('get_current_scene_structure', {});
+            const currentScene = await godot.sendCommand<{
+                scene_path?: string;
+                root_node_type?: string;
+                root_node_name?: string;
+            }>('get_current_scene', {});
+
+            const scenePath = currentScene?.scene_path;
+            if (!scenePath || scenePath === 'None' || scenePath === 'Untitled') {
+                return {
+                    text: JSON.stringify({
+                        scene_path: scenePath ?? 'None',
+                        structure: null,
+                    })
+                };
+            }
+
+            const result = await godot.sendCommand('get_scene_structure', {
+                path: scenePath
+            });
             
             return {
                 text: JSON.stringify(result)
@@ -61,5 +85,28 @@ export const sceneStructureResource: Resource = {
             console.error('Error fetching scene structure:', error);
             throw error;
         }
+    }
+};
+
+export const sceneByPathResourceTemplate = {
+    uriTemplate: 'godot://scene/by-path/{path}',
+    name: 'Godot Scene By Path',
+    mimeType: 'application/json',
+    arguments: [
+        {
+            name: 'path',
+            description: 'URL-encoded Godot scene path, e.g. res%3A%2F%2Fscenes%2Fmain.tscn'
+        }
+    ],
+    async load({ path }: { path: string }) {
+        const godot = getGodotConnection();
+        const scenePath = decodeTemplatePath(path);
+        const result = await godot.sendCommand('get_scene_structure', {
+            path: scenePath
+        });
+
+        return {
+            text: JSON.stringify(result)
+        };
     }
 };
