@@ -1,0 +1,37 @@
+{
+  "name": "godot-mcp-server",
+  "version": "1.0.0",
+  "description": "Godot MCP Codex server using FastMCP",
+  "type": "module",
+  "main": "dist/index.js",
+  "scripts": {
+    "build": "tsc",
+    "start": "node dist/index.js",
+    "start:sse": "MCP_TRANSPORT=sse MCP_SSE_PORT=8765 MCP_SSE_ENDPOINT=/sse node dist/index.js",
+    "dev": "nodemon --watch src --exec \"tsc && node dist/index.js\"",
+    "test": "npm run build && node --test test/*.test.mjs"
+  },
+  "keywords": [
+    "godot",
+    "mcp",
+    "fastmcp",
+    "claude",
+    "codex",
+    "ai"
+  ],
+  "author": "",
+  "license": "MIT",
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "1.21.2",
+    "fastmcp": "^1.20.4",
+    "websocket": "^1.0.35",
+    "ws": "^8.13.0",
+    "zod": "^3.21.4"
+  },
+  "devDependencies": {
+    "@types/node": "^20.3.1",
+    "@types/ws": "^8.5.5",
+    "nodemon": "^2.0.22",
+    "typescript": "^5.1.3"
+  }
+}
